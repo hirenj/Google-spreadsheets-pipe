@@ -114,6 +114,7 @@ def get_doc(client,username,doc_id):
     content = client.DownloadResourceToMemory(entry,{'gid': 0, 'exportFormat': 'tsv'}, auth_token=gdata.gauth.ClientLoginToken(spreadsheets_client.GetClientLoginToken()))
     client.auth_token = docs_token  # reset the DocList auth token
     print content
+    print "\n\n"
 
 if __name__ == "__main__":
     main()
