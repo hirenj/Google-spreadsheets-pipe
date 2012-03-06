@@ -1,0 +1,7 @@
+#!/bin/sh
+PYTHON=`which python`
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+PYTHONPATH=$DIR/../lib:$PYTHONPATH
+$PYTHON $DIR/../pipe.py $@
