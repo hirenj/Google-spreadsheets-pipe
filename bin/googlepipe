@@ -1,7 +1,9 @@
 #!/bin/sh
 PYTHON=`which python`
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ] ; do SOURCE="$(readlink "$SOURCE")"; done
+DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+echo $DIR
 PYTHONPATH=$DIR/../lib:$PYTHONPATH
 $PYTHON $DIR/../pipe.py $@
