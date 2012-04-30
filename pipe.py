@@ -8,7 +8,7 @@ import getpass
 import ConfigParser
 import tempfile,os,sys
 import xattr
-
+from datetime import datetime
 
 import sys
 
@@ -123,7 +123,11 @@ def get_doc(client,username,doc_id,filename):
             print >> sys.stderr, "Matching Etag, not downloading" 
             return
         else:
-            print >> sys.stderr, "No matching Etag, downloading"
+            time = int(datetime.strptime(entry.updated.text, '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%s'))
+            if time == os.stat(filename).st_mtime:
+                print >> sys.stderr, "Modification times unchanged, not downloading"
+                return
+            print >> sys.stderr, "No matching Etag or modification time, downloading ("+etag+"/"+entry.etag+")"
 
     # substitute the spreadsheets token into our client
     docs_token = client.auth_token
@@ -139,6 +143,8 @@ def get_doc(client,username,doc_id,filename):
     if not filename is None:
         client.DownloadResource(entry,filename,opts,auth_token=ssheets_auth)
         xattr.setxattr(filename,'user.etag',entry.etag)
+        time = int(datetime.strptime(entry.updated.text, '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%s'))
+        os.utime(filename, (time,time))
     else:
         print client.DownloadResourceToMemory(entry,opts,auth_token=ssheets_auth)
         print "\n\n"
