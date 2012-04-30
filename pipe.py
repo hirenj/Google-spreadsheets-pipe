@@ -111,7 +111,14 @@ def get_doc(client,username,doc_id):
     entry = client.GetResourceById(doc_id)
     # substitute the spreadsheets token into our client
     docs_token = client.auth_token
-    content = client.DownloadResourceToMemory(entry,{'gid': 0, 'exportFormat': 'tsv'}, auth_token=gdata.gauth.ClientLoginToken(spreadsheets_client.GetClientLoginToken()))
+    doc_type = entry.GetResourceType()
+    if doc_type == "text/plain" or doc_type == "application/octet-stream":
+        opts = { }
+        content = client.DownloadResourceToMemory(entry,opts)
+    else:
+        opts = { 'gid' : 0, 'exportFormat':'tsv'}
+        content = client.DownloadResourceToMemory(entry,opts, auth_token=gdata.gauth.ClientLoginToken(spreadsheets_client.GetClientLoginToken()))
+
     client.auth_token = docs_token  # reset the DocList auth token
     print content
     print "\n\n"
