@@ -7,6 +7,7 @@ import keyring
 import getpass
 import ConfigParser
 import tempfile,os
+import xattr
 
 
 import sys
@@ -25,6 +26,7 @@ def main():
                       help="run COMMAND", metavar="COMMAND")
     parser.add_option("-d", "--document", dest="docid",
                       help="Specify document")
+    parser.add_option("-w", "--write", dest="outfile")
     parser.add_option("-q", "--quiet",
                       action="store_false", dest="verbose", default=True,
                       help="don't print status messages to stdout")
@@ -35,7 +37,7 @@ def main():
     if options.command == "ls":
         list_files(client)
     elif options.command == "get":
-        get_doc(client,username,options.docid)
+        get_doc(client,username,options.docid,options.outfile)
     elif options.command == "update":
         revise_doc(client,username,options.docid)
 
@@ -56,7 +58,7 @@ def list_files(client):
     # Query the server for an Atom feed containing a list of your documents.
     #documents_feed = client.GetResources(uri='/feeds/default/private/full/-/spreadsheet')
 
-    documents_feed = client.GetResources()
+    documents_feed = client.GetResources(uri='/feeds/default/private/full/-/spreadsheet')
     # Loop through the feed and extract each document entry.
     for document_entry in documents_feed.entry:
       # Display the title of the document on the command line.
@@ -105,23 +107,40 @@ def get_client():
     # Spit back a username/client combo
     return [username,client]
 
-def get_doc(client,username,doc_id):
+def get_doc(client,username,doc_id,filename):
     spreadsheets_client = gdata.spreadsheet.service.SpreadsheetsService(source='spreadsheet-pipe')
     spreadsheets_client.ClientLogin(username, keyring.get_password('gdocs_login', username), client.source)
     entry = client.GetResourceById(doc_id)
+    etag = None
+    if filename and os.path.exists(filename):
+        try:
+            etag = xattr.getxattr(filename,'user.etag')
+        except:
+            pass
+
+    if not etag is None:
+        if entry.etag == etag:
+            return
+
     # substitute the spreadsheets token into our client
     docs_token = client.auth_token
     doc_type = entry.GetResourceType()
+
     if doc_type == "text/plain" or doc_type == "application/octet-stream":
         opts = { }
-        content = client.DownloadResourceToMemory(entry,opts)
+        ssheets_auth=None
     else:
         opts = { 'gid' : 0, 'exportFormat':'tsv'}
-        content = client.DownloadResourceToMemory(entry,opts, auth_token=gdata.gauth.ClientLoginToken(spreadsheets_client.GetClientLoginToken()))
+        ssheets_auth=gdata.gauth.ClientLoginToken(spreadsheets_client.GetClientLoginToken())
+
+    if not filename is None:
+        client.DownloadResource(entry,filename,opts,auth_token=ssheets_auth)
+        xattr.setxattr(filename,'user.etag',entry.etag)
+    else:
+        print client.DownloadResourceToMemory(entry,opts,auth_token=ssheets_auth)
+        print "\n\n"
 
     client.auth_token = docs_token  # reset the DocList auth token
-    print content
-    print "\n\n"
 
 if __name__ == "__main__":
     main()
