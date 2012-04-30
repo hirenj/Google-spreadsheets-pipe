@@ -6,7 +6,7 @@ import gdata.spreadsheet.service
 import keyring
 import getpass
 import ConfigParser
-import tempfile,os
+import tempfile,os,sys
 import xattr
 
 
@@ -120,7 +120,10 @@ def get_doc(client,username,doc_id,filename):
 
     if not etag is None:
         if entry.etag == etag:
+            print >> sys.stderr, "Matching Etag, not downloading" 
             return
+        else:
+            print >> sys.stderr, "No matching Etag, downloading"
 
     # substitute the spreadsheets token into our client
     docs_token = client.auth_token
