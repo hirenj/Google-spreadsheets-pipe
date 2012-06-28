@@ -29,6 +29,7 @@ def main():
     parser.add_option("-d", "--document", dest="docid",
                       help="Specify document")
     parser.add_option("-w", "--write", dest="outfile")
+    parser.add_option("-s", "--sheet", dest="sheet", default=0)
     parser.add_option("-q", "--quiet",
                       action="store_false", dest="verbose", default=True,
                       help="don't print status messages to stdout")
@@ -39,7 +40,7 @@ def main():
     if options.command == "ls":
         list_files(client)
     elif options.command == "get":
-        get_doc(client,username,options.docid,options.outfile)
+        get_doc(client,username,options.docid,options.outfile,sheet=options.sheet)
     elif options.command == "update":
         revise_doc(client,username,options.docid)
 
@@ -109,7 +110,7 @@ def get_client():
     # Spit back a username/client combo
     return [username,client]
 
-def get_doc(client,username,doc_id,filename):
+def get_doc(client,username,doc_id,filename,sheet=0):
     spreadsheets_client = gdata.spreadsheet.service.SpreadsheetsService(source='spreadsheet-pipe')
     spreadsheets_client.ClientLogin(username, keyring.get_password('gdocs_login', username), client.source)
     entry = client.GetResourceById(doc_id)
@@ -139,7 +140,7 @@ def get_doc(client,username,doc_id,filename):
         opts = { }
         ssheets_auth=None
     else:
-        opts = { 'gid' : 0, 'exportFormat':'tsv'}
+        opts = { 'gid' : sheet, 'exportFormat':'tsv'}
         ssheets_auth=gdata.gauth.ClientLoginToken(spreadsheets_client.GetClientLoginToken())
 
     if not filename is None:
