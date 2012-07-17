@@ -35,6 +35,8 @@ def main():
                       help="don't print status messages to stdout")
 
     (options, args) = parser.parse_args()
+    global verbose
+    verbose = options.verbose
 
     (username,client) = get_client()
     if options.command == "ls":
@@ -114,6 +116,10 @@ def get_doc(client,username,doc_id,filename,sheet=0):
     spreadsheets_client = gdata.spreadsheet.service.SpreadsheetsService(source='spreadsheet-pipe')
     spreadsheets_client.ClientLogin(username, keyring.get_password('gdocs_login', username), client.source)
     entry = client.GetResourceById(doc_id)
+
+    if verbose:
+        print >> sys.stderr, "Retrieving \""+entry.title.text+"\""
+
     etag = None
     if filename and os.path.exists(filename):
         try:
@@ -151,6 +157,9 @@ def get_doc(client,username,doc_id,filename,sheet=0):
     else:
         print client.DownloadResourceToMemory(entry,opts,auth_token=ssheets_auth)
         print "\n\n"
+
+    if verbose:
+        print >> sys.stderr, "Retrieved \""+doc_id+"\""
 
     client.auth_token = docs_token  # reset the DocList auth token
 
