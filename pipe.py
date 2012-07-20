@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import gdata.docs.service
 import gdata.docs.data
 import gdata.docs.client
@@ -30,6 +32,7 @@ def main():
                       help="Specify document")
     parser.add_option("-w", "--write", dest="outfile")
     parser.add_option("-s", "--sheet", dest="sheet", default=0)
+    parser.add_option("-a", "--archive", dest="archive", help="Archive doc and apply specified title")
     parser.add_option("-q", "--quiet",
                       action="store_false", dest="verbose", default=True,
                       help="don't print status messages to stdout")
@@ -44,7 +47,10 @@ def main():
     elif options.command == "get":
         get_doc(client,username,options.docid,options.outfile,sheet=options.sheet)
     elif options.command == "update":
-        revise_doc(client,username,options.docid)
+        if options.archive:
+            revise_doc_with_backup(client,username,options.docid,options.archive)
+        else:
+            revise_doc(client,username,options.docid)
 
 def revise_doc(client,username,docid):
     fd,temp_path = tempfile.mkstemp()
@@ -59,16 +65,27 @@ def revise_doc(client,username,docid):
     client.UpdateResource(entry,media=ms,new_revision=True)
     os.remove(temp_path)
 
+def revise_doc_with_backup(client,username,docid,new_title):
+    entry = client.GetResourceById(docid)
+    new_entry = client.CopyResource(entry,entry.title.text)
+    entry.title.text=new_title
+    client.UpdateResource(entry)
+    for uri in entry.InCollections():
+        folder=client.GetResourceBySelfLink(uri.href)
+        client.MoveResource(new_entry,folder,True)
+    revise_doc(client,username,docid)
+
+
+
 def list_files(client):
     # Query the server for an Atom feed containing a list of your documents.
     #documents_feed = client.GetResources(uri='/feeds/default/private/full/-/spreadsheet')
 
-    documents_feed = client.GetResources(uri='/feeds/default/private/full/-/spreadsheet')
+    documents_feed = client.GetResources(uri='/feeds/default/private/full?max-results=10000')
     # Loop through the feed and extract each document entry.
     for document_entry in documents_feed.entry:
       # Display the title of the document on the command line.
-      print document_entry.title.text
-      print document_entry.resource_id.text
+      print document_entry.resource_id.text+"\t"+document_entry.title.text
 
 def get_client():
     client = gdata.docs.client.DocsClient(source='spreadsheet-pipe')
