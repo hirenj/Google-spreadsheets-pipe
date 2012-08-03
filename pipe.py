@@ -42,8 +42,10 @@ def main():
     verbose = options.verbose
 
     (username,client) = get_client()
+    if options.command == "login":
+        print client.auth_token.token_string
     if options.command == "ls":
-        list_files(client)
+        list_files(client,options.docid)
     elif options.command == "get":
         get_doc(client,username,options.docid,options.outfile,sheet=options.sheet)
     elif options.command == "update":
@@ -51,6 +53,7 @@ def main():
             revise_doc_with_backup(client,username,options.docid,options.archive)
         else:
             revise_doc(client,username,options.docid)
+
 
 def revise_doc(client,username,docid):
     fd,temp_path = tempfile.mkstemp()
@@ -77,9 +80,13 @@ def revise_doc_with_backup(client,username,docid,new_title):
 
 
 
-def list_files(client):
+def list_files(client,docid=None):
     # Query the server for an Atom feed containing a list of your documents.
     #documents_feed = client.GetResources(uri='/feeds/default/private/full/-/spreadsheet')
+
+    if docid != None:
+        print client.GetResourceById(docid).title.text
+        return
 
     documents_feed = client.GetResources(uri='/feeds/default/private/full?max-results=10000')
     # Loop through the feed and extract each document entry.
@@ -102,6 +109,14 @@ def get_client():
         config.add_section('gdocs_login')
 
     username = config.get('gdocs_login','username')
+
+    if 'GPIPE_TOKEN' in os.environ:
+        client.auth_token = gdata.gauth.ClientLoginToken(os.environ['GPIPE_TOKEN'])
+        return [username,client]
+
+    print >> sys.stderr, "Performing a new login"
+
+
     password = None
     if username != '':
         password = keyring.get_password('gdocs_login', username)
