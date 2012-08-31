@@ -14,9 +14,21 @@ import iso8601
 import calendar
 from datetime import datetime
 
+import signal
+
 import sys
 
 from optparse import OptionParser
+
+global interrupted
+interrupted = False
+
+def signal_handler(signal, frame):
+        print >> sys.stderr, 'Google pipe: Aborting'
+        interrupted = True
+        sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
 
 def auth(client,username,password):
     try:
@@ -123,7 +135,7 @@ def get_client():
 
     if password == None or not auth(client,username, password):
 
-        while 1:
+        while not interrupted:
             username = raw_input("Username:\n")
             password = keyring.get_password('gdocs_login',username)
             if password == None:
@@ -132,7 +144,7 @@ def get_client():
             if auth(client,username, password):
                 break
             else:
-                print "Authorization failed."
+                print >> sys.stderr, "Authorization failed."
 
         # store the username
         config.set('gdocs_login', 'username', username)
