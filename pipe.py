@@ -44,6 +44,7 @@ def main():
                       help="Specify document")
     parser.add_option("-w", "--write", dest="outfile")
     parser.add_option("-s", "--sheet", dest="sheet", default=0)
+    parser.add_option("-m", "--mime-type", dest="mime", help="Destination mime type")
     parser.add_option("-a", "--archive", dest="archive", help="Archive doc and apply specified title")
     parser.add_option("-q", "--quiet",
                       action="store_false", dest="verbose", default=True,
@@ -60,14 +61,36 @@ def main():
         list_files(client,options.docid)
     elif options.command == "get":
         get_doc(client,username,options.docid,options.outfile,sheet=options.sheet)
+    elif options.command == "create":
+        if options.mime:
+            create_doc(client,username,options.mime)
+        else:
+            create_doc(client,username)
     elif options.command == "update":
         if options.archive:
             revise_doc_with_backup(client,username,options.docid,options.archive)
         else:
-            revise_doc(client,username,options.docid)
+            if options.mime:
+                revise_doc(client,username,options.docid,mime=options.mime)
+            else:
+                revise_doc(client,username,options.docid)
 
 
-def revise_doc(client,username,docid):
+def create_doc(client,username,mime='text/tab-separated-values'):
+    fd,temp_path = tempfile.mkstemp()
+    tf = os.fdopen(fd, "w")
+    for line in sys.stdin:
+        tf.write(line)
+    tf.close()
+
+    ms = gdata.data.MediaSource(file_path=temp_path, content_type=mime)
+
+    document = gdata.docs.data.Resource(type=mime, title='New Document')
+    document = client.CreateResource(document,media=ms)
+    print >> sys.stdout, document.resource_id.text+"\n"
+    os.remove(temp_path)
+
+def revise_doc(client,username,docid,mime='text/tab-separated-values'):
     fd,temp_path = tempfile.mkstemp()
     tf = os.fdopen(fd, "w")
     for line in sys.stdin:
@@ -75,7 +98,7 @@ def revise_doc(client,username,docid):
     tf.close()
     entry = client.GetResourceById(docid)
 
-    ms = gdata.data.MediaSource(file_path=temp_path, content_type='text/tab-separated-values')
+    ms = gdata.data.MediaSource(file_path=temp_path, content_type=mime)
 
     client.UpdateResource(entry,media=ms,new_revision=True)
     os.remove(temp_path)
@@ -134,7 +157,6 @@ def get_client():
         password = keyring.get_password('gdocs_login', username)
 
     if password == None or not auth(client,username, password):
-
         while not interrupted:
             username = raw_input("Username:\n")
             password = keyring.get_password('gdocs_login',username)
@@ -185,13 +207,12 @@ def get_doc(client,username,doc_id,filename,sheet=0):
     # substitute the spreadsheets token into our client
     docs_token = client.auth_token
     doc_type = entry.GetResourceType()
-
-    if doc_type == "text/plain" or doc_type == "application/octet-stream":
-        opts = { }
-        ssheets_auth=None
-    else:
+    if doc_type == "spreadsheet":
         opts = { 'gid' : sheet, 'exportFormat':'tsv'}
         ssheets_auth=gdata.gauth.ClientLoginToken(spreadsheets_client.GetClientLoginToken())
+    else:
+        opts = { }
+        ssheets_auth=None
 
     if not filename is None:
         client.DownloadResource(entry,filename,opts,auth_token=ssheets_auth)
