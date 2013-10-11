@@ -86,7 +86,8 @@ def create_doc(client,username,mime='text/tab-separated-values'):
     ms = gdata.data.MediaSource(file_path=temp_path, content_type=mime)
 
     document = gdata.docs.data.Resource(type=mime, title='New Document')
-    document = client.CreateResource(document,media=ms)
+    create_uri = gdata.docs.client.RESOURCE_UPLOAD_URI + '?convert=false'
+    document = client.CreateResource(document,create_uri=create_uri,media=ms)
     print >> sys.stdout, document.resource_id.text+"\n"
     os.remove(temp_path)
 
