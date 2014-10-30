@@ -44,6 +44,7 @@ def main():
                       help="Specify document")
     parser.add_option("-w", "--write", dest="outfile")
     parser.add_option("-s", "--sheet", dest="sheet", default=0)
+    parser.add_option("-t", "--title", dest="title", default="New Document",help="Title to give new document")
     parser.add_option("-m", "--mime-type", dest="mime", help="Destination mime type")
     parser.add_option("-a", "--archive", dest="archive", help="Archive doc and apply specified title")
     parser.add_option("-q", "--quiet",
@@ -63,9 +64,9 @@ def main():
         get_doc(client,username,options.docid,options.outfile,sheet=options.sheet)
     elif options.command == "create":
         if options.mime:
-            create_doc(client,username,options.mime)
+            create_doc(client,username,options.mime,options.title)
         else:
-            create_doc(client,username)
+            create_doc(client,username,options.title)
     elif options.command == "update":
         if options.archive:
             revise_doc_with_backup(client,username,options.docid,options.archive)
@@ -76,7 +77,7 @@ def main():
                 revise_doc(client,username,options.docid)
 
 
-def create_doc(client,username,mime='text/tab-separated-values'):
+def create_doc(client,username,mime='text/tab-separated-values',title='New Document'):
     fd,temp_path = tempfile.mkstemp()
     tf = os.fdopen(fd, "w")
     for line in sys.stdin:
@@ -85,7 +86,7 @@ def create_doc(client,username,mime='text/tab-separated-values'):
 
     ms = gdata.data.MediaSource(file_path=temp_path, content_type=mime)
 
-    document = gdata.docs.data.Resource(type=mime, title='New Document')
+    document = gdata.docs.data.Resource(type=mime, title=title)
     create_uri = gdata.docs.client.RESOURCE_UPLOAD_URI + '?convert=false'
     document = client.CreateResource(document,create_uri=create_uri,media=ms)
     print >> sys.stdout, document.resource_id.text+"\n"
